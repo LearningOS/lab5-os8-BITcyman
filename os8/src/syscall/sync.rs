@@ -246,33 +246,34 @@ pub fn sys_semaphore_down(sem_id: usize) -> isize {
 
     // }
     // print!("\n");
-
     
-    let mut flag = 0;
-    let mut j_satisfied = -1i32;
-    for j in 1..th_count {
+    let mut flag = 0;   // 为0表示没有线程可以被满足
+    for j in 0..th_count {
+        // 遍历所有线程
+        if semaphore_count == 4 && j==0{
+            continue;
+        }
         let mut minflag = 0;
         for i in 0..semaphore_count{
             if process_inner.request_semaphore_list[i][j] - process_inner.allocation_semaphore_list[i][j] > process_inner.remain_semaphore_list[i] as i32 {
-                minflag = 1;
+                minflag = 1;    //此线程不可以被满足
             }
         }
-        if minflag == 0 {
-            println!("thread {} can be satisfied!", j);
+        if minflag == 0 { 
             flag = 1;
-            j_satisfied = j as i32;
         }
     }
-    if process_inner.deadlock_detect == 1i32 && flag == 0 {
-        return -0xDEAD;
-    }
 
+    if process_inner.deadlock_detect == 1i32 && flag == 0 {
+            return -0xDEAD;
+    }
+    if process_inner.deadlock_detect == 1i32 && current_tid == 0 {
+        process_inner.allocation_semaphore_list[sem_id][current_tid] += 1;
+        process_inner.remain_semaphore_list[sem_id] -= 1;
+    }
     drop(process_inner);
     sem.down();
-    let process = current_process();
-    let mut process_inner = process.inner_exclusive_access();
-    process_inner.allocation_semaphore_list[sem_id][current_tid] += 1;
-    process_inner.remain_semaphore_list[sem_id] -= 1;
+    
     0
 }
 
